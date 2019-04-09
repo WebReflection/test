@@ -1,0 +1,1 @@
+function write(o,O){try{if(typeof o!='string'||!window[o])o()}catch(o){document.write('<script src="'+O+'"><\x2fscript>')}}
