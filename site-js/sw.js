@@ -10,9 +10,9 @@ addEventListener('fetch', event => {
             <html lang="en">
               <head>
                 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+                <script type="module">${js}</script>
               </head>
-            </html>
-            <script type="module">${js}</script>`,
+            </html>`,
             {
               status: 200,
               headers: {'Content-Type': 'text/html;charset=utf-8'}
