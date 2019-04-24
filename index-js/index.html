@@ -1,0 +1,16 @@
+<!DOCTYPE html><meta charset="utf-8">
+<script>addEventListener('DOMContentLoaded', function () {
+  document.title = 'Hello index.js';
+  document.head.appendChild(
+    document.createElement('style')
+  ).textContent = `
+    html {
+      font-family: sans-serif;
+      font-size: 16px;
+      text-align: center;
+    }
+  `;
+  document.body.appendChild(
+    document.createTextNode('Hello body')
+  );
+}, {once: true})</script>
