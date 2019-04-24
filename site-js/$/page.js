@@ -1,4 +1,4 @@
-import {render, html} from 'https://unpkg.com/lighterhtml?module';
+import {render, html} from '../js/lighterhtml.js';
 
 document.title = 'This is page';
 

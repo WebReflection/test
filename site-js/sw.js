@@ -1,7 +1,7 @@
 addEventListener('fetch', event => {
   const {request} = event;
   const {hostname, pathname} = new URL(request.url);
-  if (hostname === location.hostname && /\/_\//.test(pathname))
+  if (hostname === location.hostname && /\/\$\//.test(pathname))
     event.respondWith(fetch(request).then(response => {
       if (response.ok) {
         return response.text().then(js => {
