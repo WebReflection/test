@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Most basic star-rate Custom Element</title>
+  <style>
+  star-rate.checked > input:checked ~ input {
+    opacity: 0.5;
+  }
+  </style>
+  <script>
+  // <star-rate value=1-5>
+  customElements.define('star-rate', class extends HTMLElement {
+
+    // generic attribute handling
+    attributeChangedCallback(name, old, value) { this[name] = value; }
+    get observedAttributes() { return ['value']; }
+
+    // define observed attributes accessors
+    get value() {
+      return this.getAttribute('value');
+    }
+    set value(value) {
+      let input = this.querySelector(`input[value="${value}"]`);
+      let changed = false;
+      if (input && !input.checked)
+        input.checked = (changed = true);
+      else {
+        input = this.querySelector(`input:checked`);
+        if (input && input.checked)
+          input.checked = !(changed = true);
+      }
+      if (changed)
+        input.dispatchEvent(new CustomEvent('change', {bubbles: true}));
+    }
+
+    // one off setup on connected
+    connectedCallback() {
+      this.addEventListener('change', this);
+      // ⚠ the following is unpredictable
+      // it might work or not
+      const {value} = this;
+      if (value)
+        this.value = value;
+    }
+
+    // optional one off teardown on disconnect
+    disconnectedCallback() {
+      this.removeEventListener('change', this);
+    }
+
+    // event handling
+    handleEvent(event) { this[`on${event.type}`](event); }
+    onchange(event) {
+      const {target} = event;
+      this.classList.toggle('checked', target.checked);
+    }
+  });
+  </script>
+</head>
+<body>
+  <star-rate value="3">
+    <input type="radio" name="star-rate" value="1">
+    <input type="radio" name="star-rate" value="2">
+    <input type="radio" name="star-rate" value="3">
+    <input type="radio" name="star-rate" value="4">
+    <input type="radio" name="star-rate" value="5">
+  </star-rate>
+</body>
+</html>
