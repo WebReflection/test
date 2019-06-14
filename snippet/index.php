@@ -1,9 +1,16 @@
+<?php ob_start(); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Some Random Content</title>
+  <?php
+  echo str_repeat(' ', 5000);
+  ob_flush();
+  flush();
+  usleep(70000);
+  ?>
   <script>
   navigator.userAgent;
   let rand = 'first: ' + Math.random();
@@ -125,3 +132,4 @@ setTimeout(alert, 5000, rand);
 </script>
 </body>
 </html>
+<?php ob_end_flush(); ?>
