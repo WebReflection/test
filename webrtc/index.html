@@ -6,16 +6,23 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>WebRTC File Share</title>
   <script src="https://unpkg.com/simple-peer@9.6.2/simplepeer.min.js"></script>
+  <style>
+    #outgoing {
+      width: 600px;
+      word-wrap: break-word;
+      white-space: normal;
+    }
+  </style>
 </head>
 <body>
   <form>
     <textarea id="incoming"></textarea>
     <button type="submit">submit</button>
   </form>
-  <hr>
   <pre id="outgoing"></pre>
+  <script src="simplepeer.min.js"></script>
   <script>
-    const {stringify, parse} = JSON;
+    const {parse, stringify} = JSON;
     const initiator = location.search === '?share';
     const p = new SimplePeer({
       initiator,
@@ -30,36 +37,47 @@
     });
 
     document.querySelector('form').addEventListener('submit', ev => {
-      ev.preventDefault();
-      p.signal(parse(document.querySelector('#incoming').value));
+      ev.preventDefault()
+      p.signal(parse(document.querySelector('#incoming').value))
     });
 
     p.on('connect', () => {
       console.log('CONNECT');
       if (initiator)
-        p.send({
+        p.send(stringify({
           from: initiator ? "initiator" : "receiver",
-          value: 'whatever' + Math.random()
-        });
+          value: 'whatever ' + Math.random()
+        }));
     });
 
     p.on('data', data => {
-      console.log('data type: ' + typeof data);
-      const {from, value} = parse(data);
+      const {from, value} = parse(data.toString());
       switch (from) {
         case "initiator":
-          if (!initiator)
-            p.send({
+          if (!initiator) {
+            console.log('received:' + value);
+            p.send(stringify({
               from: "receiver",
               value: 'roger'
-            });
+            }));
+          }
           break;
         case "receiver":
-          if (initiator)
+          if (initiator) {
             console.log('received:' + value);
+            setTimeout(
+              () => {
+                p.send(stringify({
+                  from: "initiator",
+                  value: 'whatever ' + Math.random()
+                }));
+              },
+              1000
+            );
+          }
           break;
       }
-    })
+    });
   </script>
 </body>
 </html>
