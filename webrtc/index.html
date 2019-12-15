@@ -6,6 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>WebRTC File Share</title>
   <script src="https://unpkg.com/simple-peer@9.6.2/simplepeer.min.js"></script>
+  <script src="simple-share.js"></script>
   <style>
     #outgoing {
       width: 600px;
@@ -20,62 +21,40 @@
     <button type="submit">submit</button>
   </form>
   <pre id="outgoing"></pre>
-  <script src="simplepeer.min.js"></script>
   <script>
-    const {parse, stringify} = JSON;
-    const initiator = location.search === '?share';
-    const p = new SimplePeer({
-      initiator,
+    const p = new SimpleShare({
+      initiator: location.search === '?share',
       trickle: false
     });
 
-    p.on('error', err => console.log('error', err));
-
     p.on('signal', data => {
-      console.log('SIGNAL', stringify(data));
-      document.querySelector('#outgoing').textContent = stringify(data);
+      console.log('SIGNAL', JSON.stringify(data));
+      document.querySelector('#outgoing').textContent = JSON.stringify(data);
     });
 
     document.querySelector('form').addEventListener('submit', ev => {
-      ev.preventDefault()
-      p.signal(parse(document.querySelector('#incoming').value))
+      ev.preventDefault();
+      p.signal(document.querySelector('#incoming').value);
     });
 
     p.on('connect', () => {
       console.log('CONNECT');
-      if (initiator)
-        p.send(stringify({
-          from: initiator ? "initiator" : "receiver",
-          value: 'whatever ' + Math.random()
-        }));
+      if (p.isInitiator)
+        p.send('whatever ' + Math.random());
     });
 
     p.on('data', data => {
-      const {from, value} = parse(data.toString());
-      switch (from) {
-        case "initiator":
-          if (!initiator) {
-            console.log('received:' + value);
-            p.send(stringify({
-              from: "receiver",
-              value: 'roger'
-            }));
-          }
-          break;
-        case "receiver":
-          if (initiator) {
-            console.log('received:' + value);
-            setTimeout(
-              () => {
-                p.send(stringify({
-                  from: "initiator",
-                  value: 'whatever ' + Math.random()
-                }));
-              },
-              1000
-            );
-          }
-          break;
+      console.log('received:' + data);
+      if (p.isInitiator) {
+        setTimeout(
+          () => {
+            p.send('whatever ' + Math.random());
+          },
+          2000
+        );
+      }
+      else {
+        p.send("roger");
       }
     });
   </script>
