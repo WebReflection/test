@@ -21,6 +21,7 @@
     <button type="submit">submit</button>
   </form>
   <pre id="outgoing"></pre>
+  <pre id="progress"></pre>
   <script>
     const p = new SimpleShare({
       initiator: location.search === '?share',
@@ -43,25 +44,49 @@
         form.innerHTML = "<input type=file>";
         const input = form.firstElementChild;
         input.addEventListener("change", () => {
-          console.log(input.files[0]);
+          const file = input.files[0];
+          const {name, type, size} = file;
+          outgoing.textContent = `Sending ${name} with type ${type} and size ${size}`;
+          input.disabled = true;
+          p.sendFile(file);
         });
       }
     });
 
-    p.on('data', data => {
-      console.log('received:' + data);
-      if (p.isInitiator) {
-        setTimeout(
-          () => {
-            p.send('whatever ' + Math.random());
-          },
-          2000
-        );
-      }
-      else {
-        p.send("OK");
-      }
-    });
+    if (!p.isInitiator) {
+      let chunks = [];
+      let bytesReceived = 0;
+      let fileSize = 0;
+      p.on('data', ({action, data}) => {
+        switch (action) {
+          case "data":
+            const ui8 = new Uint8Array(data);
+            bytesReceived += ui8.byteLength;
+            chunks.push(ui8);
+            progress.textContent = `progress: ${((bytesReceived / fileSize) * 100).toFixed(2)} %`;
+            break;
+          case "init":
+            {
+              const {name, type, size} = data;
+              fileSize = size;
+              outgoing.textContent = `Receiving ${name} with type ${type} and size ${size}`;
+            }
+            break;
+          case "end":
+            {
+              const {name, type, size} = data;
+              outgoing.textContent = `${name} with type ${type} and size ${size} received.`;
+              const blob = new Blob(chunks, {type});
+              const anchor = document.createElement('a');
+              anchor.href = URL.createObjectURL(blob);
+              anchor.download = name;
+              anchor.textContent = 'DOWNLOAD';
+              anchor.click();
+            }
+            break;
+        }
+      });
+    }
   </script>
 </body>
 </html>
