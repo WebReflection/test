@@ -26,21 +26,26 @@
       initiator: location.search === '?share',
       trickle: false
     });
-
+    const form = document.querySelector('form');
+    const outgoing = document.querySelector('#outgoing');
     p.on('signal', data => {
-      console.log('SIGNAL', JSON.stringify(data));
-      document.querySelector('#outgoing').textContent = JSON.stringify(data);
+      outgoing.textContent = JSON.stringify(data);
     });
 
-    document.querySelector('form').addEventListener('submit', ev => {
+    form.addEventListener('submit', ev => {
       ev.preventDefault();
       p.signal(document.querySelector('#incoming').value);
     });
 
     p.on('connect', () => {
-      console.log('CONNECT');
-      if (p.isInitiator)
-        p.send('whatever ' + Math.random());
+      outgoing.textContent = "";
+      if (p.isInitiator) {
+        form.innerHTML = "<input type=file>";
+        const input = form.firstElementChild;
+        input.addEventListener("change", () => {
+          console.log(input.files[0]);
+        });
+      }
     });
 
     p.on('data', data => {
@@ -54,7 +59,7 @@
         );
       }
       else {
-        p.send("roger");
+        p.send("OK");
       }
     });
   </script>
