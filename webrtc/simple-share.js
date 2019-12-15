@@ -2,9 +2,8 @@ const SimpleShare = (function () {
 
   const {parse, stringify} = JSON;
   const {min, random} = Math;
-  const {fromCharCode} = String;
 
-  const BYTES_PER_CHUNK = 1200;
+  const BYTES_PER_CHUNK = 12000;
 
   const ss = new WeakMap;
   
@@ -20,10 +19,60 @@ const SimpleShare = (function () {
       ss.set(this, {initiator, peer, connect, uid, listeners: new Map});
     }
     get isInitiator() { return ss.get(this).initiator; }
+    receiveFile() {
+      const {peer, connect} = ss.get(this);
+      connect.then(() => {
+        let buffer = [];
+        let bytesReceived = 0;
+        let fileSize = 0;
+        this.on('data', function onData({action, data}) {
+          switch (action) {
+            case "data":
+              const ui8 = new Uint8Array(data);
+              bytesReceived += ui8.byteLength;
+              buffer.push(ui8);
+              peer.emit('receive:progress', bytesReceived / fileSize);
+              break;
+            case "start":
+              fileSize = data.size;
+              peer.emit('receive:start', data);
+              break;
+            case "end":
+              const {name, type} = data;
+              const blob = new Blob(buffer, {type});
+              const href = URL.createObjectURL(blob);
+              const anchor = document.createElement('a');
+              anchor.href = href;
+              anchor.download = name;
+              anchor.textContent = 'DOWNLOAD';
+              this.removeListener('data', onData);
+              peer.emit('receive:end', data);
+              this.send('completed');
+              document.body.appendChild(anchor);
+              anchor.onclick = () => {
+                document.body.removeChild(anchor);
+              };
+              try {
+                anchor.click();
+              }
+              catch(meh) {
+
+              }
+              // setTimeout(() => URL.revokeObjectURL(href), 5000);
+              break;
+          }
+        });
+      });
+    }
     sendFile(file) {
-      return new Promise($ => {
+      const {peer, connect} = ss.get(this);
+      this.on('data', function onData(downloaded) {
+        if (downloaded === 'completed')
+          peer.emit('send:completed');
+      });
+      return connect.then(() => new Promise($ => {
         const {name, type, size} = file;
-        p.send({action: "init", data: {name, type, size}});
+        this.send({action: "start", data: {name, type, size}});
         let currentChunk = 0;
         const fileReader = new FileReader();
         fileReader.onload = () => {
@@ -31,12 +80,12 @@ const SimpleShare = (function () {
           const data = [];
           for (let i = 0, {byteLength} = dv; i < byteLength; i++)
             data.push(dv.getUint8(i));
-          p.send({action: "data", data});
+          this.send({action: "data", data});
           currentChunk++;
           if(BYTES_PER_CHUNK * currentChunk < file.size)
             readNextChunk();
           else {
-            p.send({action: "end", data: {name, type, size}});
+            this.send({action: "end", data: {name, type, size}});
             $(file);
           }
         };
@@ -45,8 +94,9 @@ const SimpleShare = (function () {
           const start = BYTES_PER_CHUNK * currentChunk;
           const end = min(size, start + BYTES_PER_CHUNK);
           fileReader.readAsArrayBuffer(file.slice(start, end));
+          peer.emit('send:progress', end / size);
         }
-      });
+      }));
     }
     send(data) {
       const {peer, connect, uid} = ss.get(this);

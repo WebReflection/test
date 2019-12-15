@@ -13,6 +13,9 @@
       word-wrap: break-word;
       white-space: normal;
     }
+    #progress {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -21,7 +24,7 @@
     <button type="submit">submit</button>
   </form>
   <pre id="outgoing"></pre>
-  <pre id="progress"></pre>
+  <progress min=0 max=1 id="progress"></progress>
   <script>
     const p = new SimpleShare({
       initiator: location.search === '?share',
@@ -38,9 +41,8 @@
       p.signal(document.querySelector('#incoming').value);
     });
 
-    p.on('connect', () => {
-      outgoing.textContent = "";
-      if (p.isInitiator) {
+    if (p.isInitiator) {
+      p.on('connect', () => {
         form.innerHTML = "<input type=file>";
         const input = form.firstElementChild;
         input.addEventListener("change", () => {
@@ -48,45 +50,35 @@
           const {name, type, size} = file;
           outgoing.textContent = `Sending ${name} with type ${type} and size ${size}`;
           input.disabled = true;
-          p.sendFile(file);
+          p.sendFile(file).then(() => {
+            outgoing.textContent = `${name} sent ... (waiting to be downloaded)`;
+            input.disabled = false;
+          });
         });
-      }
-    });
-
-    if (!p.isInitiator) {
-      let chunks = [];
-      let bytesReceived = 0;
-      let fileSize = 0;
-      p.on('data', ({action, data}) => {
-        switch (action) {
-          case "data":
-            const ui8 = new Uint8Array(data);
-            bytesReceived += ui8.byteLength;
-            chunks.push(ui8);
-            progress.textContent = `progress: ${((bytesReceived / fileSize) * 100).toFixed(2)} %`;
-            break;
-          case "init":
-            {
-              const {name, type, size} = data;
-              fileSize = size;
-              outgoing.textContent = `Receiving ${name} with type ${type} and size ${size}`;
-            }
-            break;
-          case "end":
-            {
-              const {name, type, size} = data;
-              outgoing.textContent = `${name} with type ${type} and size ${size} received.`;
-              const blob = new Blob(chunks, {type});
-              const anchor = document.createElement('a');
-              anchor.href = URL.createObjectURL(blob);
-              anchor.download = name;
-              anchor.textContent = 'DOWNLOAD';
-              anchor.click();
-            }
-            break;
-        }
+      });
+      p.on('send:progress', value => {
+        progress.style.display = 'block';
+        progress.value = value;
+      });
+      p.on('send:completed', value => {
+        progress.style.display = 'none';
+        outgoing.textContent = `${name} downlaoded 🎉`;
       });
     }
+    else {
+      p.receiveFile();
+      p.on('receive:start', ({name, type, size}) => {
+        outgoing.textContent = `Receiving ${name} with type ${type} and size ${size}`;
+      });
+      p.on('receive:progress', value => {
+        progress.style.display = 'block';
+        progress.value = value;
+      });
+      p.on('receive:end', ({name, type, size}) => {
+        outgoing.textContent = `${name} with type ${type} and size ${size} completed 🎉`;
+      });
+    }
+
   </script>
 </body>
 </html>
