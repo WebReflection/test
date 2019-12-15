@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>WebRTC File Share</title>
+  <script src="https://unpkg.com/simple-peer@9.6.2/simplepeer.min.js"></script>
+</head>
+<body>
+  <form>
+    <textarea id="incoming"></textarea>
+    <button type="submit">submit</button>
+  </form>
+  <hr>
+  <pre id="outgoing"></pre>
+  <script>
+    const {stringify, parse} = JSON;
+    const initiator = location.search === '?share';
+    const p = new SimplePeer({
+      initiator,
+      trickle: false
+    });
+
+    p.on('error', err => console.log('error', err));
+
+    p.on('signal', data => {
+      console.log('SIGNAL', stringify(data));
+      document.querySelector('#outgoing').textContent = stringify(data);
+    });
+
+    document.querySelector('form').addEventListener('submit', ev => {
+      ev.preventDefault();
+      p.signal(parse(document.querySelector('#incoming').value));
+    });
+
+    p.on('connect', () => {
+      console.log('CONNECT');
+      if (initiator)
+        p.send({
+          from: initiator ? "initiator" : "receiver",
+          value: 'whatever' + Math.random()
+        });
+    });
+
+    p.on('data', data => {
+      console.log('data type: ' + typeof data);
+      const {from, value} = parse(data);
+      switch (from) {
+        case "initiator":
+          if (!initiator)
+            p.send({
+              from: "receiver",
+              value: 'roger'
+            });
+          break;
+        case "receiver":
+          if (initiator)
+            console.log('received:' + value);
+          break;
+      }
+    })
+  </script>
+</body>
+</html>
