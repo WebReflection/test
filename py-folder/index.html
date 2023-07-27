@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pyodide Mounted Folder</title>
+  <script type="module">
+    import plainTag from 'https://esm.sh/plain-tag';
+    import { loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.mjs';
+    content.textContent = 'loading pyodide ...';
+    const interpreter = await loadPyodide();
+    const py = (...args) => interpreter.runPython(plainTag(...args));
+    content.textContent = '';
+    openFolder.disabled = false;
+    openFolder.addEventListener('click', event => {
+      event.preventDefault();
+      py`
+        from js import document, showDirectoryPicker, Object
+        from pyodide.ffi import to_js
+        import pyodide_js
+        import os
+
+        async def requestAndPrintFolder():
+            modeObject = to_js({ "mode": "readwrite" }, dict_converter = Object.fromEntries)
+
+            try:
+                dirHandle = await showDirectoryPicker()
+                if await dirHandle.queryPermission(modeObject) != "granted":
+                    if await dirHandle.requestPermission(modeObject) != "granted":
+                        raise Exception("Unable to read and write directory")
+
+                nativefs = await pyodide_js.mountNativeFS("/mount_dir", dirHandle)
+                document.getElementById("content").textContent = "\\n".join(os.listdir("/mount_dir"))
+
+            except:
+                document.getElementById("content").textContent = "Unauthorized operation"
+
+        requestAndPrintFolder()
+      `;
+    });
+  </script>
+</head>
+
+<body>
+  <button id="openFolder" disabled>Click to request folder</button>
+  <pre id="content"></pre>
+</body>
+
+</html>
